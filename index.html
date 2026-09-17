@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00e5ff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Table Studio</title>
+
+<style>
+*{
+    box-sizing:border-box;
+    font-family:Arial,sans-serif;
+}
+
+body{
+    margin:0;
+    background:#08111f;
+    color:white;
+}
+
+header{
+    text-align:center;
+    padding:22px;
+    background:#111d33;
+}
+
+header h1{
+    margin:0;
+    color:#62e6ff;
+}
+
+nav{
+    display:flex;
+    justify-content:center;
+    flex-wrap:wrap;
+    gap:8px;
+    padding:15px;
+    background:#060d18;
+}
+
+button{
+    cursor:pointer;
+    border:1px solid #3b4c68;
+    border-radius:10px;
+    padding:11px 16px;
+    background:#172640;
+    color:white;
+}
+
+button:hover{
+    background:#2e5fc4;
+}
+
+.container{
+    max-width:1150px;
+    margin:auto;
+    padding:20px;
+}
+
+.card{
+    background:#111d33;
+    border:1px solid #263957;
+    border-radius:18px;
+    padding:20px;
+}
+
+.controls{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin:15px 0;
+}
+
+input{
+    padding:11px;
+    border-radius:8px;
+    border:1px solid #435675;
+    background:#0b1525;
+    color:white;
+}
+
+.action{
+    background:#3867d6;
+}
+
+/* ================= 3D AREA ================= */
+
+.scene{
+    width:100%;
+    min-height:520px;
+    overflow:hidden;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    perspective:1000px;
+    border-radius:15px;
+    background:
+        radial-gradient(circle at center,
+        #20385d 0%,
+        #0b1424 55%,
+        #050a12 100%);
+}
+
+.world{
+    transform-style:preserve-3d;
+    transform:rotateX(18deg) rotateY(-20deg);
+    transition:transform .25s;
+}
+
+.scene.dragging .world{
+    transition:none;
+}
+
+/* ================= PERIODIC ================= */
+
+.periodic3d{
+    display:grid;
+    grid-template-columns:repeat(10,75px);
+    gap:8px;
+    transform-style:preserve-3d;
+}
+
+.element3d{
+    width:75px;
+    height:75px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    border:1px solid #6382a8;
+    border-radius:10px;
+    background:#203451;
+    transform:translateZ(25px);
+    box-shadow:
+        0 0 0 2px #14243b,
+        0 15px 20px rgba(0,0,0,.45);
+    transition:.2s;
+}
+
+.element3d:hover{
+    transform:translateZ(55px) scale(1.08);
+    background:#315da0;
+}
+
+.element3d strong{
+    font-size:20px;
+}
+
+.element3d small{
+    font-size:10px;
+}
+
+/* ================= 3D TABLE ================= */
+
+.table3d{
+    border-collapse:separate;
+    border-spacing:8px;
+    transform-style:preserve-3d;
+}
+
+.table3d th,
+.table3d td{
+    min-width:90px;
+    height:55px;
+    text-align:center;
+    border:1px solid #5c7395;
+    border-radius:8px;
+    padding:10px;
+}
+
+.table3d th{
+    background:#243b60;
+    transform:translateZ(25px);
+}
+
+.table3d td{
+    background:#182b46;
+    transform:translateZ(20px);
+    box-shadow:0 10px 15px rgba(0,0,0,.35);
+}
+
+.table3d td[contenteditable="true"]{
+    cursor:text;
+}
+
+/* ================= HOME ================= */
+
+.features{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+    gap:12px;
+    margin-top:20px;
+}
+
+.feature{
+    padding:18px;
+    border-radius:12px;
+    background:#172640;
+    border:1px solid #304765;
+}
+
+/* ================= MOBILE ================= */
+
+@media(max-width:700px){
+
+    .scene{
+        min-height:420px;
+        overflow:auto;
+        justify-content:flex-start;
+    }
+
+    .world{
+        margin:100px;
+    }
+
+    .periodic3d{
+        grid-template-columns:repeat(5,65px);
+    }
+
+    .element3d{
+        width:65px;
+        height:65px;
+    }
+
+    .table3d{
+        font-size:12px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>🚀 3D TABLE STUDIO</h1>
+    <p>Learn • Create • Explore in 3D</p>
+</header>
+
+<nav>
+
+<button onclick="showPage('home')">
+🏠 Home
+</button>
+
+<button onclick="showPage('periodic')">
+🧪 Periodic Table
+</button>
+
+<button onclick="showPage('math')">
+🔢 Maths Tables
+</button>
+
+<button onclick="showPage('timetable')">
+📅 Timetable
+</button>
+
+<button onclick="showPage('custom')">
+📊 Custom Table
+</button>
+
+<button onclick="toggle3D()" id="modeBtn">
+🧊 3D Mode: ON
+</button>
+
+</nav>
+
+<div class="container">
+<div id="app"></div>
+</div>
+
+
+<script>
+
+const app=document.getElementById("app");
+
+let is3D=true;
+
+let rotationX=18;
+let rotationY=-20;
+
+
+/* =================================================
+   3D ROTATION
+================================================= */
+
+function createScene(content){
+
+    return `
+    <div class="scene" id="scene">
+
+        <div class="world" id="world">
+
+            ${content}
+
+        </div>
+
+    </div>
+    `;
+}
+
+
+function setup3D(){
+
+    const scene=document.getElementById("scene");
+    const world=document.getElementById("world");
+
+    if(!scene || !world) return;
+
+    if(!is3D){
+
+        world.style.transform="none";
+
+        return;
+
+    }
+
+    let dragging=false;
+    let startX=0;
+    let startY=0;
+    let startRX=rotationX;
+    let startRY=rotationY;
+
+    scene.addEventListener("pointerdown",(e)=>{
+
+        dragging=true;
+
+        scene.classList.add("dragging");
+
+        startX=e.clientX;
+        startY=e.clientY;
+
+        startRX=rotationX;
+        startRY=rotationY;
+
+        scene.setPointerCapture(e.pointerId);
+
+    });
+
+
+    scene.addEventListener("pointermove",(e)=>{
+
+        if(!dragging) return;
+
+        let dx=e.clientX-startX;
+        let dy=e.clientY-startY;
+
+        rotationY=startRY+dx*.35;
+        rotationX=startRX-dy*.35;
+
+        rotationX=Math.max(-70,Math.min(70,rotationX));
+
+        world.style.transform=
+        `rotateX(${rotationX}deg)
+         rotateY(${rotationY}deg)`;
+
+    });
+
+
+    scene.addEventListener("pointerup",()=>{
+
+        dragging=false;
+
+        scene.classList.remove("dragging");
+
+    });
+
+}
+
+
+/* =================================================
+   3D MODE
+================================================= */
+
+function toggle3D(){
+
+    is3D=!is3D;
+
+    document.getElementById("modeBtn").textContent=
+        is3D ? "🧊 3D Mode: ON" : "📄 3D Mode: OFF";
+
+    const world=document.getElementById("world");
+
+    if(world){
+
+        world.style.transform=is3D
+        ? `rotateX(${rotationX}deg) rotateY(${rotationY}deg)`
+        : "none";
+
+    }
+
+}
+
+
+/* =================================================
+   HOME
+================================================= */
+
+function home(){
+
+    app.innerHTML=`
+
+    <div class="card">
+
+        <h2>🌟 Welcome to 3D Table Studio</h2>
+
+        <p>
+        Everything is now available in an interactive
+        3D style.
+        </p>
+
+        <div class="features">
+
+            <div class="feature">
+                🧪
+                <h3>Periodic Table</h3>
+                <p>Explore chemical elements.</p>
+            </div>
+
+            <div class="feature">
+                🔢
+                <h3>Maths Tables</h3>
+                <p>Generate multiplication tables.</p>
+            </div>
+
+            <div class="feature">
+                📅
+                <h3>Timetable</h3>
+                <p>Create your school timetable.</p>
+            </div>
+
+            <div class="feature">
+                📊
+                <h3>Custom Table</h3>
+                <p>Create any table you want.</p>
+            </div>
+
+        </div>
+
+        <div class="feature" style="margin-top:20px">
+
+            🖱️ <b>3D Controls</b>
+
+            <p>
+            Mouse/touch drag → Rotate the 3D view
+            </p>
+
+        </div>
+
+    </div>
+
+    `;
+
+}
+
+
+/* =================================================
+   ELEMENT DATA
+================================================= */
+
+const elements=[
+
+["H","Hydrogen",1,"1.008"],
+["He","Helium",2,"4.003"],
+["Li","Lithium",3,"6.94"],
+["Be","Beryllium",4,"9.012"],
+["B","Boron",5,"10.81"],
+["C","Carbon",6,"12.011"],
+["N","Nitrogen",7,"14.007"],
+["O","Oxygen",8,"15.999"],
+["F","Fluorine",9,"18.998"],
+["Ne","Neon",10,"20.180"],
+
+["Na","Sodium",11,"22.990"],
+["Mg","Magnesium",12,"24.305"],
+["Al","Aluminium",13,"26.982"],
+["Si","Silicon",14,"28.085"],
+["P","Phosphorus",15,"30.974"],
+["S","Sulfur",16,"32.06"],
+["Cl","Chlorine",17,"35.45"],
+["Ar","Argon",18,"39.948"],
+
+["K","Potassium",19,"39.098"],
+["Ca","Calcium",20,"40.078"],
+
+["Sc","Scandium",21,"44.956"],
+["Ti","Titanium",22,"47.867"],
+["V","Vanadium",23,"50.942"],
+["Cr","Chromium",24,"51.996"],
+["Mn","Manganese",25,"54.938"],
+["Fe","Iron",26,"55.845"],
+["Co","Cobalt",27,"58.933"],
+["Ni","Nickel",28,"58.693"],
+["Cu","Copper",29,"63.546"],
+["Zn","Zinc",30,"65.38"],
+
+["Ga","Gallium",31,"69.723"],
+["Ge","Germanium",32,"72.630"],
+["As","Arsenic",33,"74.922"],
+["Se","Selenium",34,"78.971"],
+["Br","Bromine",35,"79.904"],
+["Kr","Krypton",36,"83.798"],
+
+["Rb","Rubidium",37,"85.468"],
+["Sr","Strontium",38,"87.62"],
+["Y","Yttrium",39,"88.906"],
+["Zr","Zirconium",40,"91.224"],
+["Nb","Niobium",41,"92.906"],
+["Mo","Molybdenum",42,"95.95"],
+["Tc","Technetium",43,"98"],
+["Ru","Ruthenium",44,"101.07"],
+["Rh","Rhodium",45,"102.91"],
+["Pd","Palladium",46,"106.42"],
+["Ag","Silver",47,"107.87"],
+["Cd","Cadmium",48,"112.41"],
+["In","Indium",49,"114.82"],
+["Sn","Tin",50,"118.71"]
+
+];
+
+
+/* =================================================
+   PERIODIC TABLE
+================================================= */
+
+function periodicTable(){
+
+    app.innerHTML=`
+
+    <div class="card">
+
+        <h2>🧪 3D Periodic Table</h2>
+
+        <div class="controls">
+
+            <input
+            id="elementSearch"
+            placeholder="Search element..."
+            oninput="searchElement()">
+
+        </div>
+
+        ${createScene(`
+            <div
+            id="elementsBox"
+            class="periodic3d">
+            </div>
+        `)}
+
+        <div
+        id="elementInfo"
+        class="result"
+        style="
+        margin-top:20px;
+        padding:15px;
+        background:#0b1525;
+        border-radius:10px">
+
+        Click an element.
+
+        </div>
+
+    </div>
+
+    `;
+
+    renderElements(elements);
+
+    setup3D();
+
+}
+
+
+function renderElements(data){
+
+    const box=document.getElementById("elementsBox");
+
+    box.innerHTML="";
+
+    data.forEach(e=>{
+
+        const button=document.createElement("button");
+
+        button.className="element3d";
+
+        button.innerHTML=`
+
+        <small>${e[2]}</small>
+
+        <strong>${e[0]}</strong>
+
+        <small>${e[1]}</small>
+
+        `;
+
+        button.onclick=()=>{
+
+            document.getElementById("elementInfo").innerHTML=`
+
+            <h3>${e[0]} — ${e[1]}</h3>
+
+            <p>
+            Atomic Number: ${e[2]}
+            </p>
+
+            <p>
+            Atomic Mass: ${e[3]}
+            </p>
+
+            `;
+
+        };
+
+        box.appendChild(button);
+
+    });
+
+}
+
+
+function searchElement(){
+
+    const value=
+    document.getElementById("elementSearch")
+    .value.toLowerCase();
+
+    const result=elements.filter(e=>
+
+        e[0].toLowerCase().includes(value) ||
+
+        e[1].toLowerCase().includes(value)
+
+    );
+
+    renderElements(result);
+
+}
+
+
+/* =================================================
+   MATH TABLE
+================================================= */
+
+function mathTable(){
+
+    app.innerHTML=`
+
+    <div class="card">
+
+        <h2>🔢 3D Maths Table Generator</h2>
+
+        <div class="controls">
+
+            <input
+            id="mathNumber"
+            type="number"
+            value="7"
+            min="1"
+            max="100">
+
+            <input
+            id="mathLimit"
+            type="number"
+            value="20"
+            min="1"
+            max="100">
+
+            <button
+            class="action"
+            onclick="generateMath()">
+
+            Generate
+
+            </button>
+
+        </div>
+
+        <div id="mathResult"></div>
+
+    </div>
+
+    `;
+
+    generateMath();
+
+}
+
+
+function generateMath(){
+
+    let n=
+    Number(document.getElementById("mathNumber").value);
+
+    let limit=
+    Number(document.getElementById("mathLimit").value);
+
+    n=Math.max(1,Math.min(100,n));
+
+    limit=Math.max(1,Math.min(100,limit));
+
+    let rows="";
+
+    for(let i=1;i<=limit;i++){
+
+        rows+=`
+
+        <tr>
+
+            <td>${n} × ${i}</td>
+
+            <td>${n*i}</td>
+
+        </tr>
+
+        `;
+
+    }
+
+    document.getElementById("mathResult").innerHTML=
+
+    createScene(`
+
+    <table class="table3d">
+
+        <tr>
+
+            <th>Question</th>
+
+            <th>Answer</th>
+
+        </tr>
+
+        ${rows}
+
+    </table>
+
+    `);
+
+    setup3D();
+
+}
+
+
+/* =================================================
+   TIMETABLE
+================================================= */
+
+function timetable(){
+
+    app.innerHTML=`
+
+    <div class="card">
+
+        <h2>📅 3D School Timetable</h2>
+
+        <div class="controls">
+
+            <label>
+            Periods:
+
+            <input
+            id="periodCount"
+            type="number"
+            value="6"
+            min="1"
+            max="10">
+
+            </label>
+
+            <button
+            class="action"
+            onclick="createTimetable()">
+
+            Create
+
+            </button>
+
+        </div>
+
+        <div id="timeResult"></div>
+
+    </div>
+
+    `;
+
+    createTimetable();
+
+}
+
+
+function createTimetable(){
+
+    let periods=
+    Number(document.getElementById("periodCount").value);
+
+    periods=Math.max(1,Math.min(10,periods));
+
+    const days=[
+
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday"
+
+    ];
+
+    let head="";
+
+    for(let i=1;i<=periods;i++){
+
+        head+=`<th>Period ${i}</th>`;
+
+    }
+
+    let rows="";
+
+    days.forEach(day=>{
+
+        let cells="";
+
+        for(let i=1;i<=periods;i++){
+
+            cells+=`
+
+            <td contenteditable="true">
+            Subject
+            </td>
+
+            `;
+
+        }
+
+        rows+=`
+
+        <tr>
+
+            <th>${day}</th>
+
+            ${cells}
+
+        </tr>
+
+        `;
+
+    });
+
+
+    document.getElementById("timeResult").innerHTML=
+
+    createScene(`
+
+    <table class="table3d">
+
+        <tr>
+
+            <th>Day</th>
+
+            ${head}
+
+        </tr>
+
+        ${rows}
+
+    </table>
+
+    `);
+
+    setup3D();
+
+}
+
+
+/* =================================================
+   CUSTOM TABLE
+================================================= */
+
+function customTable(){
+
+    app.innerHTML=`
+
+    <div class="card">
+
+        <h2>📊 3D Custom Table Maker</h2>
+
+        <div class="controls">
+
+            <input
+            id="rows"
+            type="number"
+            value="5"
+            min="1"
+            max="20"
+            placeholder="Rows">
+
+            <input
+            id="columns"
+            type="number"
+            value="4"
+            min="1"
+            max="10"
+            placeholder="Columns">
+
+            <button
+            class="action"
+            onclick="generateCustom()">
+
+            Create
+
+            </button>
+
+        </div>
+
+        <div id="customResult"></div>
+
+    </div>
+
+    `;
+
+    generateCustom();
+
+}
+
+
+function generateCustom(){
+
+    let rows=
+    Number(document.getElementById("rows").value);
+
+    let cols=
+    Number(document.getElementById("columns").value);
+
+    rows=Math.max(1,Math.min(20,rows));
+
+    cols=Math.max(1,Math.min(10,cols));
+
+    let html="";
+
+    for(let r=0;r<rows;r++){
+
+        html+="<tr>";
+
+        for(let c=0;c<cols;c++){
+
+            html+=`
+
+            <td contenteditable="true">
+            Type here
+            </td>
+
+            `;
+
+        }
+
+        html+="</tr>";
+
+    }
+
+
+    document.getElementById("customResult").innerHTML=
+
+    createScene(`
+
+    <table class="table3d">
+
+        ${html}
+
+    </table>
+
+    `);
+
+    setup3D();
+
+}
+
+
+/* =================================================
+   PAGE ROUTER
+================================================= */
+
+function showPage(page){
+
+    if(page==="home")
+        home();
+
+    if(page==="periodic")
+        periodicTable();
+
+    if(page==="math")
+        mathTable();
+
+    if(page==="timetable")
+        timetable();
+
+    if(page==="custom")
+        customTable();
+
+}
+
+
+/* START */
+
+showPage("home");
+
+</script>
+
+<script>
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js")
+        .then(() => console.log("TABLEVERSE PWA Ready"))
+        .catch(error => console.log("PWA Error:", error));
+}
+
+</script>
+</body>
+</html>

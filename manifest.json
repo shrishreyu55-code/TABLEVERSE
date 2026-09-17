@@ -1,0 +1,9 @@
+{
+  "name": "TABLEVERSE 3D",
+  "short_name": "TABLEVERSE",
+  "start_url": "./flex.html",
+  "display": "standalone",
+  "background_color": "#050816",
+  "theme_color": "#00e5ff",
+  "orientation": "portrait"
+}
